@@ -440,12 +440,14 @@ class Grid {
         const ni = nx + ny * cols;
         const ns = this.state[ni];
 
+        const heatPower = Math.max(0.1, this.life[i] / 20.0);
+
         if (ns === LIQUID) {
           // Fire + Water → vaporize water instantly
           this.clearCell(nx, ny);
         } else if (ns === SOLID) {
           // Fire + Sand → heat up, eventually become Glass
-          this.heat[ni] += 1.0;
+          this.heat[ni] += 1.0 * heatPower;
           // Visual: Sand glows orange as it heats
           const heatRatio = Math.min(this.heat[ni] / 30, 1);
           this.r[ni] = Math.floor(220 + 35 * heatRatio);
@@ -464,7 +466,7 @@ class Grid {
           }
         } else if (ns === GLASS) {
           // Fire + Glass → heat up, eventually become Molten Glass
-          this.heat[ni] += 0.5;
+          this.heat[ni] += 0.5 * heatPower;
           // Visual: Glass glows orange-red as it heats
           const heatRatio = Math.min(this.heat[ni] / 60, 1);
           if (heatRatio > 0.3) {

@@ -60,6 +60,7 @@
     margin-bottom: 0.5rem;
     background: linear-gradient(135deg, #38bdf8, #818cf8);
     -webkit-background-clip: text;
+    background-clip: text;
     -webkit-text-fill-color: transparent;
   }
   
@@ -277,68 +278,51 @@
   #solid-toggle  { top: 50px; }
   #render-toggle { top: 80px; }
 
-  /* ── Fire Gesture Indicator ── */
-  #fire-indicator {
+  /* ── Gesture Legend ── */
+  #gesture-legend {
     position: absolute;
     right: 20px;
-    top: 110px;
+    top: 120px;
     z-index: 100;
-    color: #ff4400;
-    font-family: monospace;
-    font-size: 18px;
+    color: #cbd5e1;
+    background: rgba(30, 41, 59, 0.6);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 15px;
+    width: 200px;
+    transition: opacity 0.3s ease;
+  }
+
+  #gesture-legend.hidden {
     opacity: 0;
-    transition: opacity 0.15s ease, text-shadow 0.15s ease;
     pointer-events: none;
-    text-shadow: 0 0 5px rgba(255, 68, 0, 0.3);
   }
 
-  #fire-indicator.active {
-    opacity: 1;
-    text-shadow:
-      0 0 8px rgba(255, 68, 0, 0.8),
-      0 0 20px rgba(255, 120, 0, 0.5),
-      0 0 40px rgba(255, 60, 0, 0.3);
-    animation: fire-pulse 0.4s ease-in-out infinite alternate;
+  #gesture-legend h3 {
+    font-size: 0.8rem;
+    color: #94a3b8;
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 5px;
   }
 
-  @keyframes fire-pulse {
-    0% {
-      text-shadow:
-        0 0 8px rgba(255, 68, 0, 0.8),
-        0 0 20px rgba(255, 120, 0, 0.5);
-    }
-    100% {
-      text-shadow:
-        0 0 12px rgba(255, 68, 0, 1),
-        0 0 30px rgba(255, 120, 0, 0.8),
-        0 0 50px rgba(255, 40, 0, 0.4);
-    }
+  #gesture-legend ul {
+    list-style: none;
   }
 
-  /* ── Eraser Gesture Indicator ── */
-  #eraser-indicator {
-    position: absolute;
-    right: 20px;
-    top: 110px; /* Same position as fire, they won't overlap */
-    z-index: 100;
-    color: #ff5555;
-    font-family: monospace;
-    font-size: 18px;
-    opacity: 0;
-    transition: opacity 0.15s ease, text-shadow 0.15s ease;
-    pointer-events: none;
-    text-shadow: 0 0 5px rgba(255, 85, 85, 0.3);
+  #gesture-legend li {
+    font-size: 0.85rem;
+    margin-bottom: 0.4rem;
+    display: flex;
+    align-items: center;
   }
-
-  #eraser-indicator.active {
-    opacity: 1;
-    text-shadow:
-      0 0 8px rgba(255, 85, 85, 0.8),
-      0 0 20px rgba(255, 85, 85, 0.5);
-    animation: eraser-pulse 0.4s ease-in-out infinite alternate;
-  }
-
-  @keyframes eraser-pulse {
-    0% { text-shadow: 0 0 8px rgba(255, 85, 85, 0.8); }
-    100% { text-shadow: 0 0 15px rgba(255, 85, 85, 1); }
+  
+  #gesture-legend .emoji {
+    display: inline-block;
+    width: 20px;
+    margin-right: 5px;
   }

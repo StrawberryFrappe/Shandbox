@@ -61,6 +61,7 @@ function onFirstDetection(results) {
   document.getElementById('loading').classList.add('hidden');
   document.getElementById('solid-toggle').classList.remove('hidden');
   document.getElementById('render-toggle').classList.remove('hidden');
+  document.getElementById('gesture-legend').classList.remove('hidden');
 
   let solidCb = document.getElementById('complex-solid-checkbox');
   solidCb.checked = true;
@@ -262,13 +263,13 @@ function processHands() {
 
   // --- 4. ERASER (TWO-FINGER POINT) ---
   eraserActive = detectEraserGesture(kp);
-  if (eraserActive && !devilHornsActive) {
+  if (eraserActive) {
     let midX = (kp[8].x + kp[12].x) / 2;
     let midY = (kp[8].y + kp[12].y) / 2;
     
     let gx = pX(midX);
     let gy = pY(midY);
-    let eraserRadius = 2; // small brush
+    let eraserRadius = 4; // larger brush
     
     for (let dy = -eraserRadius; dy <= eraserRadius; dy++) {
       for (let dx = -eraserRadius; dx <= eraserRadius; dx++) {
@@ -462,7 +463,9 @@ function drawHandVisuals() {
     fill(255, 100, 0, 180);
     circle(kp[4].x, kp[4].y, 18);
     circle(kp[20].x, kp[20].y, 18);
-  } else if (eraserActive) {
+  }
+  
+  if (eraserActive) {
     // ── Eraser indicator ──
     let emitX = (kp[8].x + kp[12].x) / 2;
     let emitY = (kp[8].y + kp[12].y) / 2;
@@ -470,7 +473,7 @@ function drawHandVisuals() {
     noFill();
     stroke(255, 100, 100, 150);
     strokeWeight(2);
-    circle(emitX, emitY, RESOLUTION * 6); // visual radius
+    circle(emitX, emitY, RESOLUTION * 10); // visual radius
 
     // Highlight the two fingers
     fill(255, 50, 50, 180);
@@ -495,19 +498,4 @@ function drawFPS() {
   textFont('monospace');
   textAlign(RIGHT, TOP);
   text(`FPS: ${floor(frameRate())}`, width - 20, 20);
-
-  // ── Active Gesture Indicators ──
-  let fIndicator = document.getElementById('fire-indicator');
-  let eIndicator = document.getElementById('eraser-indicator');
-
-  if (devilHornsActive) {
-    if (fIndicator) fIndicator.classList.add('active');
-    if (eIndicator) eIndicator.classList.remove('active');
-  } else if (eraserActive) {
-    if (fIndicator) fIndicator.classList.remove('active');
-    if (eIndicator) eIndicator.classList.add('active');
-  } else {
-    if (fIndicator) fIndicator.classList.remove('active');
-    if (eIndicator) eIndicator.classList.remove('active');
-  }
 }

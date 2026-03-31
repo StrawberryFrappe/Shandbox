@@ -1,0 +1,229 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Outfit', sans-serif;
+  }
+  
+  body {
+    background-color: #0f172a; /* Deep slate background */
+    overflow: hidden; /* No scrolling for a canvas game */
+    color: #f8fafc;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  
+  #canvas-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1; /* Below UI */
+  }
+  
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+  
+  /* Glassmorphism Panel */
+  .glass-panel {
+    position: relative;
+    z-index: 10;
+    background: rgba(30, 41, 59, 0.6);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    border-radius: 24px;
+    padding: 2.5rem;
+    width: 90%;
+    max-width: 500px;
+    text-align: center;
+    transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.4s ease;
+  }
+  
+  .glass-panel.hidden {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-50px) scale(0.95);
+  }
+  
+  .glass-panel h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    background: linear-gradient(135deg, #38bdf8, #818cf8);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  
+  .glass-panel p {
+    color: #cbd5e1;
+    margin-bottom: 2rem;
+    font-size: 1rem;
+    font-weight: 300;
+  }
+  
+  /* Settings Grid */
+  .settings-group {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    margin-bottom: 1.5rem;
+  }
+  
+  .settings-group label {
+    font-size: 0.875rem;
+    color: #94a3b8;
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 500;
+  }
+  
+  .settings-group select {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: rgba(15, 23, 42, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    color: white;
+    font-size: 1rem;
+    outline: none;
+    appearance: none; /* remove default arrow */
+    cursor: pointer;
+    transition: border-color 0.2s ease;
+  }
+  
+  .settings-group select:focus {
+    border-color: #818cf8;
+  }
+  
+  /* Start Button */
+  .glow-on-hover {
+    width: 100%;
+    padding: 1rem;
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: #fff;
+    background: linear-gradient(135deg, #38bdf8, #818cf8);
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    outline: none;
+    position: relative;
+    z-index: 0;
+    margin-top: 1rem;
+    transition: transform 0.2s ease;
+  }
+  
+  .glow-on-hover:hover {
+    transform: scale(1.02);
+  }
+  
+  .glow-on-hover:active {
+    transform: scale(0.98);
+  }
+  
+  .instructions {
+    margin-top: 2rem;
+    text-align: left;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 1.5rem;
+    border-radius: 16px;
+  }
+  
+  .instructions h3 {
+    font-size: 1rem;
+    color: #e2e8f0;
+    margin-bottom: 0.75rem;
+  }
+  
+  .instructions ul li {
+    font-size: 0.875rem;
+    color: #94a3b8;
+    margin-bottom: 0.5rem;
+    line-height: 1.4;
+    list-style-type: none;
+    position: relative;
+    padding-left: 1.2rem;
+  }
+  
+  .instructions ul li::before {
+    content: "•";
+    position: absolute;
+    left: 0;
+    color: #818cf8;
+  }
+  
+  /* In-Game UI Overlay */
+  #game-ui {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    z-index: 100;
+    transition: opacity 0.3s ease;
+  }
+  
+  #game-ui.hidden {
+    opacity: 0;
+    pointer-events: none;
+  }
+  
+  .glass-btn {
+    background: rgba(30, 41, 59, 0.6);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: white;
+    padding: 0.5rem 1.5rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background 0.2s;
+  }
+  
+  .glass-btn:hover {
+    background: rgba(30, 41, 59, 0.9);
+  }
+  
+  /* Loading Overlay */
+  .overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: #0f172a;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    transition: opacity 0.5s ease;
+  }
+  
+  .overlay.hidden {
+    opacity: 0;
+    pointer-events: none;
+  }
+  
+  .spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid rgba(255, 255, 255, 0.1);
+    border-left-color: #38bdf8;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 1rem;
+  }
+  
+  @keyframes spin {
+    100% { transform: rotate(360deg); }
+  }

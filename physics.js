@@ -443,8 +443,12 @@ class Grid {
         const heatPower = Math.max(0.1, this.life[i] / 20.0);
 
         if (ns === LIQUID) {
-          // Fire + Water → vaporize water instantly
-          this.clearCell(nx, ny);
+          // Fire is quenched by water. Water has a rough chance to vaporize.
+          if (fastRandom() < 0.25) {
+            this.clearCell(nx, ny);
+          }
+          this.clearCell(x, y); // Fire dies unconditionally
+          return;
         } else if (ns === SOLID) {
           // Fire + Sand → heat up, eventually become Glass
           this.heat[ni] += 1.0 * heatPower;
@@ -534,8 +538,9 @@ class Grid {
     const cols = this.cols;
     const i = x + y * cols;
 
-    // ── Check if any adjacent Fire is keeping it hot ──
+    // ── Check if any adjacent Fire or Water is nearby ──
     let nearFire = false;
+    let nearWater = false;
     for (let dy = -1; dy <= 1; dy++) {
       for (let dx = -1; dx <= 1; dx++) {
         if (dx === 0 && dy === 0) continue;
@@ -543,16 +548,22 @@ class Grid {
         if (nx >= 0 && nx < this.cols && ny >= 0 && ny < this.rows) {
           if (this.state[nx + ny * cols] === FIRE) {
             nearFire = true;
-            break;
+          } else if (this.state[nx + ny * cols] === LIQUID) {
+            nearWater = true;
           }
         }
       }
-      if (nearFire) break;
     }
 
     // ── Cooling timer ──
     if (!nearFire) {
-      this.life[i]--;
+      // Cool rapidly if touching water
+      if (nearWater) {
+        this.life[i] -= 15; 
+      } else {
+        this.life[i]--;
+      }
+      
       // Visual: shift color from orange toward blue-white as it cools
       const coolRatio = Math.max(this.life[i] / 120, 0);
       this.r[i] = Math.floor(160 + 95 * coolRatio);
@@ -569,6 +580,9 @@ class Grid {
         this.vely[i] = 0;
         this.velx[i] = 0;
         this.heat[i] = 0;
+        
+        // Optional: Vaporize the touching water blocks occasionally for effect? 
+        // We'll just leave it cooling it incredibly fast for now.
         return;
       }
     } else {

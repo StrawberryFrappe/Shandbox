@@ -227,3 +227,118 @@
   @keyframes spin {
     100% { transform: rotate(360deg); }
   }
+  
+  /* ── HUD Toggle Shared Style ── */
+  .hud-toggle,
+  #render-toggle {
+    position: absolute;
+    right: 20px;
+    z-index: 100;
+    color: #00ff00;
+    font-family: monospace;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    text-shadow: 0 0 5px rgba(0, 255, 0, 0.5);
+  }
+
+  .hud-toggle input[type="checkbox"],
+  #render-toggle input[type="checkbox"] {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    border: 2px solid #00ff00;
+    background: transparent;
+    cursor: pointer;
+    position: relative;
+  }
+
+  .hud-toggle input[type="checkbox"]:checked::after,
+  #render-toggle input[type="checkbox"]:checked::after {
+    content: "X";
+    position: absolute;
+    top: -2px;
+    left: 2px;
+    color: #00ff00;
+    font-family: monospace;
+    font-size: 16px;
+    font-weight: bold;
+  }
+
+  .hud-toggle.hidden,
+  #render-toggle.hidden {
+    display: none !important;
+  }
+
+  /* Individual positions */
+  #solid-toggle  { top: 50px; }
+  #render-toggle { top: 80px; }
+
+  /* ── Fire Gesture Indicator ── */
+  #fire-indicator {
+    position: absolute;
+    right: 20px;
+    top: 110px;
+    z-index: 100;
+    color: #ff4400;
+    font-family: monospace;
+    font-size: 18px;
+    opacity: 0;
+    transition: opacity 0.15s ease, text-shadow 0.15s ease;
+    pointer-events: none;
+    text-shadow: 0 0 5px rgba(255, 68, 0, 0.3);
+  }
+
+  #fire-indicator.active {
+    opacity: 1;
+    text-shadow:
+      0 0 8px rgba(255, 68, 0, 0.8),
+      0 0 20px rgba(255, 120, 0, 0.5),
+      0 0 40px rgba(255, 60, 0, 0.3);
+    animation: fire-pulse 0.4s ease-in-out infinite alternate;
+  }
+
+  @keyframes fire-pulse {
+    0% {
+      text-shadow:
+        0 0 8px rgba(255, 68, 0, 0.8),
+        0 0 20px rgba(255, 120, 0, 0.5);
+    }
+    100% {
+      text-shadow:
+        0 0 12px rgba(255, 68, 0, 1),
+        0 0 30px rgba(255, 120, 0, 0.8),
+        0 0 50px rgba(255, 40, 0, 0.4);
+    }
+  }
+
+  /* ── Eraser Gesture Indicator ── */
+  #eraser-indicator {
+    position: absolute;
+    right: 20px;
+    top: 110px; /* Same position as fire, they won't overlap */
+    z-index: 100;
+    color: #ff5555;
+    font-family: monospace;
+    font-size: 18px;
+    opacity: 0;
+    transition: opacity 0.15s ease, text-shadow 0.15s ease;
+    pointer-events: none;
+    text-shadow: 0 0 5px rgba(255, 85, 85, 0.3);
+  }
+
+  #eraser-indicator.active {
+    opacity: 1;
+    text-shadow:
+      0 0 8px rgba(255, 85, 85, 0.8),
+      0 0 20px rgba(255, 85, 85, 0.5);
+    animation: eraser-pulse 0.4s ease-in-out infinite alternate;
+  }
+
+  @keyframes eraser-pulse {
+    0% { text-shadow: 0 0 8px rgba(255, 85, 85, 0.8); }
+    100% { text-shadow: 0 0 15px rgba(255, 85, 85, 1); }
+  }

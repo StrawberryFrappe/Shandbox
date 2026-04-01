@@ -1,14 +1,16 @@
-importScripts("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.8/vision_bundle.js");
-
-const { HandLandmarker, FilesetResolver } = self;
 let handLandmarker;
 
 async function init() {
   try {
-    const vision = await FilesetResolver.forVisionTasks(
+    // Dynamically importing the ESM module inside a classic worker 
+    // preserves the `importScripts` global function for Emscripten WASM loading.
+    const vision = await import("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.8/vision_bundle.mjs");
+    const { HandLandmarker, FilesetResolver } = vision;
+
+    const resolver = await FilesetResolver.forVisionTasks(
       "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.8/wasm"
     );
-    handLandmarker = await HandLandmarker.createFromOptions(vision, {
+    handLandmarker = await HandLandmarker.createFromOptions(resolver, {
       baseOptions: {
         modelAssetPath: "https://storage.googleapis.com/mediapipe-tasks/hand_landmarker/hand_landmarker.task",
         delegate: "GPU"
@@ -31,7 +33,7 @@ self.onmessage = (e) => {
     // Perform detection on the ImageBitmap
     const results = handLandmarker.detect(image);
     
-    // Convert to the exact format sketch.js expects (ml5 identical)
+    // Convert to the exact format sketch.js expects (ml5 identically pixel-mapped)
     let ml5format = [];
     if (results.landmarks && results.landmarks.length > 0) {
       ml5format = [{

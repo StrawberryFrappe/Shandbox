@@ -7,8 +7,9 @@ let softRenderer, glRenderer;
 let useWebGL = true;
 let useCameraMirror = false;
 
-// ── ml5 Hand Tracking ──
-let handPose;
+// ── Hand Tracking Worker ──
+let worker;
+let isWorkerReady = false;
 let video;
 let modelsLoaded = false;
 let gameStarted = false;
@@ -29,10 +30,7 @@ let prevHandKeypoints = null;
 let devilHornsActive = false;
 let eraserActive = false;
 
-function preload() {
-  console.log("Loading Handpose...");
-  handPose = ml5.handPose({ flipped: false, maxHands: 1 });
-}
+// Preload is now handled by the Web Worker
 
 function setup() {
   let canvas = createCanvas(windowWidth, windowHeight);
@@ -43,15 +41,26 @@ function setup() {
   video.size(windowWidth, windowHeight);
   video.hide();
 
-  // Start with continuous detection; we'll switch to manual after first result
-  handPose.detectStart(video, onFirstDetection);
+  console.log("Loading Hand Tracking Worker...");
+  worker = new Worker('worker.js');
+  worker.onmessage = (e) => {
+    if (e.data.type === "LOADED") {
+      isWorkerReady = true;
+      console.log("Hand Tracking Worker Loaded");
+    } else if (e.data.type === "RESULTS") {
+      if (!gameStarted) {
+        onFirstDetection(e.data.results);
+      } else {
+        onHandDetected(e.data.results);
+      }
+    }
+  };
 
   initGrid();
 }
 
 function onFirstDetection(results) {
   // First detection received — model is loaded
-  handPose.detectStop(); // Stop continuous detection
 
   // Process initial result
   if (results.length > 0) {
@@ -147,9 +156,19 @@ function draw() {
   }
 
   // ── Throttled hand detection (every 2nd frame) ──
-  if (frameCount % detectionFrameSkip === 0 && !detectionPending && modelsLoaded) {
+  if (frameCount % detectionFrameSkip === 0 && !detectionPending && isWorkerReady && video.loadedmetadata) {
     detectionPending = true;
-    handPose.detect(video, onHandDetected);
+    createImageBitmap(video.elt).then(bitmap => {
+      worker.postMessage({
+        type: "DETECT",
+        image: bitmap,
+        width: video.width,
+        height: video.height
+      }, [bitmap]);
+    }).catch(err => {
+      console.error("Image capture error:", err);
+      detectionPending = false;
+    });
   }
 
   // ── Interpolate keypoints ──

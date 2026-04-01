@@ -8,14 +8,16 @@ let useWebGL = true;
 let useCameraMirror = false;
 
 // ── ml5 Hand Tracking ──
-let handPose;
+let handWorker;
 let video;
 let modelsLoaded = false;
 let gameStarted = false;
 
-// ── Inference throttling (30fps = every 2nd frame) ──
+// ── Inference throttling (off-thread, so detect every frame) ──
 let detectionPending = false;
-let detectionFrameSkip = 2;
+let detectionFrameSkip = 1;
+let handLostGrace = 0;        // Consecutive empty results counter
+const HAND_GRACE_FRAMES = 10; // Keep last keypoints for this many misses (~167ms)
 
 // ── Keypoint interpolation ──
 let prevRawKP = null;      // Previous raw detection
@@ -30,8 +32,7 @@ let devilHornsActive = false;
 let eraserActive = false;
 
 function preload() {
-  console.log("Loading Handpose...");
-  handPose = ml5.handPose({ flipped: false, maxHands: 1 });
+  // Model loading is now handled asynchronously by worker.js
 }
 
 function setup() {
@@ -43,39 +44,28 @@ function setup() {
   video.size(windowWidth, windowHeight);
   video.hide();
 
-  // Start with continuous detection; we'll switch to manual after first result
-  handPose.detectStart(video, onFirstDetection);
+  // Start Web Worker for Hand Pose Detection
+  handWorker = new Worker('worker.js');
+  handWorker.onmessage = (e) => {
+    if (!gameStarted && e.data.type === 'ready') {
+      onFirstDetection();
+    } else if (e.data.type === 'results') {
+      onHandDetected(e.data.results);
+    }
+  };
 
   initGrid();
 }
 
-function onFirstDetection(results) {
-  // First detection received — model is loaded
-  handPose.detectStop(); // Stop continuous detection
+function onFirstDetection() {
+  // First detection ready — model is loaded
 
-  // Process initial result
-  if (results.length > 0) {
-    currentRawKP = results[0].keypoints;
-    lerpedKP = currentRawKP.map(kp => ({ x: kp.x, y: kp.y }));
-  }
 
   document.getElementById('loading').classList.add('hidden');
-  document.getElementById('solid-toggle').classList.remove('hidden');
-  document.getElementById('render-toggle').classList.remove('hidden');
   document.getElementById('camera-toggle').classList.remove('hidden');
   document.getElementById('gesture-legend').classList.remove('hidden');
 
-  let solidCb = document.getElementById('complex-solid-checkbox');
-  solidCb.checked = true;
-  document.getElementById('complex-solid-checkbox').addEventListener('change', (e) => {
-    complexSolid = e.target.checked;
-  });
 
-  let webglCb = document.getElementById('webgl-checkbox');
-  webglCb.checked = true;
-  document.getElementById('webgl-checkbox').addEventListener('change', (e) => {
-    useWebGL = e.target.checked;
-  });
 
   let cameraCb = document.getElementById('camera-checkbox');
   cameraCb.checked = false;
@@ -90,10 +80,24 @@ function onFirstDetection(results) {
 function onHandDetected(results) {
   prevRawKP = currentRawKP;
   if (results.length > 0) {
-    currentRawKP = results[0].keypoints;
+    // Scale keypoints from native video resolution to display dimensions
+    const vidW = video.elt.videoWidth || width;
+    const vidH = video.elt.videoHeight || height;
+    const scaleX = width / vidW;
+    const scaleY = height / vidH;
+    currentRawKP = results[0].keypoints.map(kp => ({
+      x: kp.x * scaleX,
+      y: kp.y * scaleY,
+    }));
+    handLostGrace = 0; // Reset grace counter — hand is visible
   } else {
-    currentRawKP = null;
-    prevRawKP = null;
+    handLostGrace++;
+    if (handLostGrace >= HAND_GRACE_FRAMES) {
+      // Truly lost — clear keypoints
+      currentRawKP = null;
+      prevRawKP = null;
+    }
+    // Otherwise keep last known keypoints alive
   }
   kpLerpT = 0;
   detectionPending = false;
@@ -146,10 +150,17 @@ function draw() {
     pop();
   }
 
-  // ── Throttled hand detection (every 2nd frame) ──
+  // ── Throttled hand detection via Web Worker ──
   if (frameCount % detectionFrameSkip === 0 && !detectionPending && modelsLoaded) {
-    detectionPending = true;
-    handPose.detect(video, onHandDetected);
+    if (video.elt && video.elt.readyState >= 2) {
+      detectionPending = true;
+      createImageBitmap(video.elt).then(bitmap => {
+        handWorker.postMessage({ type: 'detect', bitmap: bitmap }, [bitmap]);
+      }).catch(err => {
+        console.error("ImageBitmap error:", err);
+        detectionPending = false;
+      });
+    }
   }
 
   // ── Interpolate keypoints ──

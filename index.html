@@ -23,29 +23,22 @@
 
   <div id="canvas-container"></div>
 
-  <label id="solid-toggle" class="hud-toggle hidden">
-    <input type="checkbox" id="complex-solid-checkbox">
-    [COMPLEX SOLIDS]
-  </label>
+  <!-- HUD panel stacks items naturally, no gaps -->
+  <div id="hud-panel">
+    <label id="camera-toggle" class="hud-toggle hidden">
+      <input type="checkbox" id="camera-checkbox">
+      [CAMERA MIRROR]
+    </label>
 
-  <label id="render-toggle" class="hud-toggle hidden">
-    <input type="checkbox" id="webgl-checkbox">
-    [WEBGL RENDER]
-  </label>
-
-  <label id="camera-toggle" class="hud-toggle hidden">
-    <input type="checkbox" id="camera-checkbox">
-    [CAMERA MIRROR]
-  </label>
-
-  <div id="gesture-legend" class="hidden">
-    <h3>POWER SIGNS</h3>
-    <ul>
-      <li><span class="emoji">🔥</span> Fire: Pinky + Thumb</li>
-      <li><span class="emoji">🗑️</span> Eraser: Index + Middle</li>
-      <li><span class="emoji">🤏</span> Sand: Pinch & Move</li>
-      <li><span class="emoji">👇</span> Water: Thumb Down</li>
-    </ul>
+    <div id="gesture-legend" class="hidden">
+      <h3>POWER SIGNS</h3>
+      <ul>
+        <li><span class="emoji">🔥</span> Fire: Pinky + Thumb</li>
+        <li><span class="emoji">🗑️</span> Eraser: Index + Middle</li>
+        <li><span class="emoji">🤏</span> Sand: Pinch &amp; Move</li>
+        <li><span class="emoji">👇</span> Water: Thumb Down</li>
+      </ul>
+    </div>
   </div>
 
   <!-- Scripts -->

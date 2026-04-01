@@ -48,10 +48,20 @@ class Grid {
     this.life = new Int16Array(this.size);    // lifespan counter (Fire dies, Molten cools)
 
     // ── Explicit hand-cell tracking ──
-    this.handCells = [];
+    this.handCells = new Int32Array(this.size);
+    this.handCount = 0;
 
     // ── Pixel data buffer for renderer (RGBA) ──
     this.pixelData = new Uint8Array(this.size * 4);
+
+    // ── Chunk-based Sleep System ──
+    this.chunkSize = 16;
+    this.chunkCols = Math.ceil(cols / this.chunkSize);
+    this.chunkRows = Math.ceil(rows / this.chunkSize);
+    this.numChunks = this.chunkCols * this.chunkRows;
+    this.chunkActive = new Uint8Array(this.numChunks);
+    this.chunkNextActive = new Uint8Array(this.numChunks);
+    this.chunkActive.fill(1); // Wake all initially
   }
 
   // ────────────────────────────────────────
@@ -70,6 +80,27 @@ class Grid {
   }
 
   // ────────────────────────────────────────
+  //  Active Region Management
+  // ────────────────────────────────────────
+  wakeRegion(x, y) {
+    const cx = Math.floor(x / this.chunkSize);
+    const cy = Math.floor(y / this.chunkSize);
+
+    // Wake 3x3 surrounding chunks to ensure seamless interactions
+    const startY = Math.max(0, cy - 1);
+    const endY = Math.min(this.chunkRows - 1, cy + 1);
+    const startX = Math.max(0, cx - 1);
+    const endX = Math.min(this.chunkCols - 1, cx + 1);
+
+    for (let j = startY; j <= endY; j++) {
+      const rowOff = j * this.chunkCols;
+      for (let i = startX; i <= endX; i++) {
+        this.chunkNextActive[i + rowOff] = 1;
+      }
+    }
+  }
+
+  // ────────────────────────────────────────
   //  Cell mutations
   // ────────────────────────────────────────
   setPixel(x, y, state, r, g, b, mass = 1.0, vely = 1.0, velx = 0.0) {
@@ -81,6 +112,7 @@ class Grid {
     this.vely[i] = vely;
     this.velx[i] = velx;
     this.updated[i] = 1;
+    this.wakeRegion(x, y);
   }
 
   clearCell(x, y) {
@@ -90,6 +122,7 @@ class Grid {
     this.r[i] = 0; this.g[i] = 0; this.b[i] = 0;
     this.mass[i] = 0; this.vely[i] = 0; this.velx[i] = 0;
     this.heat[i] = 0; this.life[i] = 0;
+    this.wakeRegion(x, y);
   }
 
   movePixel(x, y, newX, newY, newVely = null) {
@@ -114,6 +147,9 @@ class Grid {
     this.r[i] = 0; this.g[i] = 0; this.b[i] = 0;
     this.mass[i] = 0; this.vely[i] = 0; this.velx[i] = 0;
     this.heat[i] = 0; this.life[i] = 0;
+    
+    this.wakeRegion(x, y);
+    this.wakeRegion(newX, newY);
   }
 
   swapPixel(x1, y1, x2, y2) {
@@ -134,6 +170,9 @@ class Grid {
 
     this.updated[i1] = 1;
     this.updated[i2] = 1;
+    
+    this.wakeRegion(x1, y1);
+    this.wakeRegion(x2, y2);
   }
 
   // ── Geological Pressure Helper ──
@@ -153,7 +192,7 @@ class Grid {
   // ────────────────────────────────────────
   clearHands() {
     const { state, r, g, b, mass, vely } = this;
-    for (let j = 0; j < this.handCells.length; j++) {
+    for (let j = 0; j < this.handCount; j++) {
       const idx = this.handCells[j];
       if (state[idx] === HAND) {
         state[idx] = EMPTY;
@@ -161,7 +200,7 @@ class Grid {
         mass[idx] = 0; vely[idx] = 0;
       }
     }
-    this.handCells.length = 0;
+    this.handCount = 0;
   }
 
   setHand(x, y, dx, dy, radius) {
@@ -187,7 +226,8 @@ class Grid {
         this.r[i] = 255; this.g[i] = 255; this.b[i] = 255;
         this.mass[i] = 1.0; this.vely[i] = 0;
         this.updated[i] = 1;
-        this.handCells.push(i);
+        this.handCells[this.handCount++] = i;
+        this.wakeRegion(lx, ly);
       }
     }
   }
@@ -260,46 +300,72 @@ class Grid {
   }
 
   // ────────────────────────────────────────
-  //  Physics update (full scan, no sleep)
+  //  Physics update (Chunk-based sleeping)
   // ────────────────────────────────────────
   update(complexSolid = false) {
     this.updated.fill(0);
+    // NOTE: Do NOT zero chunkNextActive here — it contains wake signals
+    // from setPixel/setHand/clearCell calls that happened BEFORE update().
 
     const scanRight = fastRandom() > 0.5;
     const cols = this.cols;
     const state = this.state;
     const updated = this.updated;
 
-    for (let y = this.rows - 1; y >= 0; y--) {
-      const rowOff = y * cols;
-      for (let x = 0; x < cols; x++) {
-        const scanX = scanRight ? x : cols - 1 - x;
-        const i = scanX + rowOff;
+    for (let cy = this.chunkRows - 1; cy >= 0; cy--) {
+      for (let cx = 0; cx < this.chunkCols; cx++) {
+        const cIdx = cx + cy * this.chunkCols;
+        if (!this.chunkActive[cIdx]) continue; // SKIP SLEEPING CHUNK!
 
-        if (state[i] === EMPTY || state[i] === HAND || updated[i]) continue;
+        const startX = cx * this.chunkSize;
+        const endX = Math.min(startX + this.chunkSize, this.cols);
+        const startY = cy * this.chunkSize;
+        const endY = Math.min(startY + this.chunkSize, this.rows);
 
-        if (state[i] === SOLID) {
-          this.updateSolid(scanX, y, complexSolid);
-        } else if (state[i] === LIQUID) {
-          this.updateSimpleLiquid(scanX, y);
-        } else if (state[i] === FIRE) {
-          this.updateFire(scanX, y);
-        } else if (state[i] === MOLTEN_GLASS) {
-          this.updateMoltenGlass(scanX, y);
-        } else if (state[i] === PLANT) {
-          this.updatePlant(scanX, y);
-        } else if (state[i] === WOOD) {
-          this.updateWood(scanX, y);
-        } else if (state[i] === LEAF) {
-          this.updateLeaf(scanX, y);
-        } else if (state[i] === GRASS) {
-          this.updateGrass(scanX, y);
-        } else if (state[i] === OIL) {
-          this.updateOil(scanX, y);
+        for (let y = endY - 1; y >= startY; y--) {
+          const rowOff = y * cols;
+          for (let x = startX; x < endX; x++) {
+            const scanX = scanRight ? x : (endX - 1 - (x - startX));
+            const i = scanX + rowOff;
+
+            if (state[i] === EMPTY || state[i] === HAND || updated[i]) continue;
+
+            const st = state[i];
+            
+            // Particles that inherently animate/change must keep themselves active
+            if (st === FIRE || st === MOLTEN_GLASS || st === LIQUID || st === WOOD || st === LEAF) {
+               this.chunkNextActive[cIdx] = 1;
+            }
+
+            if (st === SOLID) {
+              this.updateSolid(scanX, y, complexSolid);
+            } else if (st === LIQUID) {
+              this.updateSimpleLiquid(scanX, y);
+            } else if (st === FIRE) {
+              this.updateFire(scanX, y);
+            } else if (st === MOLTEN_GLASS) {
+              this.updateMoltenGlass(scanX, y);
+            } else if (st === PLANT) {
+              this.updatePlant(scanX, y);
+            } else if (st === WOOD) {
+              this.updateWood(scanX, y);
+            } else if (st === LEAF) {
+              this.updateLeaf(scanX, y);
+            } else if (st === GRASS) {
+              this.updateGrass(scanX, y);
+            } else if (st === OIL) {
+              this.updateOil(scanX, y);
+            }
+          }
         }
-        // GLASS & DIAMOND is static
       }
     }
+
+    // Swap buffers
+    const temp = this.chunkActive;
+    this.chunkActive = this.chunkNextActive;
+    this.chunkNextActive = temp;
+    this.chunkNextActive.fill(0); // Zero the recycled buffer for next frame
   }
 
   updateSolid(x, y, complexSolid) {

@@ -486,35 +486,6 @@ class Grid {
   }
 
 
-
-  displace(cx, cy, radius) {
-    for (let dy = -radius; dy <= radius; dy++) {
-      for (let dx = -radius; dx <= radius; dx++) {
-        if (dx * dx + dy * dy > radius * radius) continue;
-        const x = cx + dx, y = cy + dy;
-        if (x < 0 || x >= this.cols || y < 0 || y >= this.rows) continue;
-        const i = x + y * this.cols;
-        if (this.state[i] === EMPTY) continue;
-
-        let dirX = x - cx, dirY = y - cy;
-        if (dirX === 0 && dirY === 0) {
-          dirX = fastRandom() > 0.5 ? 1 : -1;
-          dirY = fastRandom() > 0.5 ? 1 : -1;
-        }
-        const length = Math.sqrt(dirX * dirX + dirY * dirY);
-        const pushR = Math.max(2, radius);
-        const trgX = Math.floor(x + (dirX / length) * pushR);
-        const trgY = Math.floor(y + (dirY / length) * pushR);
-
-        if (this.isEmpty(trgX, trgY))       this.movePixel(x, y, trgX, trgY);
-        else if (this.isEmpty(x, y - 1))    this.movePixel(x, y, x, y - 1);
-        else if (this.isEmpty(x - 1, y))    this.movePixel(x, y, x - 1, y);
-        else if (this.isEmpty(x + 1, y))    this.movePixel(x, y, x + 1, y);
-        else if (this.isEmpty(x, y + 1))    this.movePixel(x, y, x, y + 1);
-      }
-    }
-  }
-
   // ── Build RGBA pixel buffer for renderer ──
   buildPixelData() {
     const pd = this.pixelData;

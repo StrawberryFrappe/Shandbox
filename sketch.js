@@ -31,10 +31,6 @@ let prevHandKeypoints = null;
 let devilHornsActive = false;
 let eraserActive = false;
 
-function preload() {
-  // Model loading is now handled asynchronously by worker.js
-}
-
 function setup() {
   let canvas = createCanvas(windowWidth, windowHeight);
   canvas.parent('canvas-container');

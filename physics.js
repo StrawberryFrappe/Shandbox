@@ -733,6 +733,12 @@ class Grid {
   updatePlant(x, y) {
     const i = x + y * this.cols;
 
+    // Gravity — fall if unsupported
+    if (this.isEmpty(x, y + 1)) {
+      this.movePixel(x, y, x, y + 1);
+      return;
+    }
+
     if (fastRandom() < 0.01 && this.checkPressure(x, y) > 15) {
       this.turnToOil(x, y);
       return;
@@ -749,6 +755,12 @@ class Grid {
 
   updateWood(x, y) {
     const i = x + y * this.cols;
+
+    // Gravity — fall if unsupported
+    if (this.isEmpty(x, y + 1)) {
+      this.movePixel(x, y, x, y + 1);
+      return;
+    }
 
     if (fastRandom() < 0.01 && this.checkPressure(x, y) > 15) {
       this.turnToOil(x, y);
@@ -792,6 +804,12 @@ class Grid {
   }
 
   updateGrass(x, y) {
+    // Gravity — fall if unsupported
+    if (this.isEmpty(x, y + 1)) {
+      this.movePixel(x, y, x, y + 1);
+      return;
+    }
+
     if (fastRandom() < 0.01 && this.checkPressure(x, y) > 15) {
       this.turnToOil(x, y);
       return;

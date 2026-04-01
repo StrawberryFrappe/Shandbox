@@ -5,6 +5,12 @@ const HAND = 3;
 const FIRE = 4;
 const GLASS = 5;
 const MOLTEN_GLASS = 6;
+const PLANT = 7;
+const WOOD = 8;
+const LEAF = 9;
+const GRASS = 10;
+const OIL = 11;
+const DIAMOND = 12;
 
 // ── Fast RNG via pre-generated table ──
 const RNG_SIZE = 4096;
@@ -128,6 +134,18 @@ class Grid {
 
     this.updated[i1] = 1;
     this.updated[i2] = 1;
+  }
+
+  // ── Geological Pressure Helper ──
+  checkPressure(x, y) {
+    let massSum = 0;
+    for (let cy = y - 1; cy >= 0; cy--) {
+      const ci = x + cy * this.cols;
+      const s = this.state[ci];
+      if (s === EMPTY || s === HAND) break;
+      massSum += this.mass[ci];
+    }
+    return massSum;
   }
 
   // ────────────────────────────────────────
@@ -268,8 +286,18 @@ class Grid {
           this.updateFire(scanX, y);
         } else if (state[i] === MOLTEN_GLASS) {
           this.updateMoltenGlass(scanX, y);
+        } else if (state[i] === PLANT) {
+          this.updatePlant(scanX, y);
+        } else if (state[i] === WOOD) {
+          this.updateWood(scanX, y);
+        } else if (state[i] === LEAF) {
+          this.updateLeaf(scanX, y);
+        } else if (state[i] === GRASS) {
+          this.updateGrass(scanX, y);
+        } else if (state[i] === OIL) {
+          this.updateOil(scanX, y);
         }
-        // GLASS is static — no update needed
+        // GLASS & DIAMOND is static
       }
     }
   }
@@ -277,6 +305,38 @@ class Grid {
   updateSolid(x, y, complexSolid) {
     const cols = this.cols;
     const i = x + y * cols;
+
+    // Germination check
+    if (fastRandom() < 0.005) {
+      let hasWater = false;
+      let wx = -1, wy = -1;
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          if (dx === 0 && dy === 0) continue;
+          const nx = x + dx, ny = y + dy;
+          if (nx >= 0 && nx < this.cols && ny >= 0 && ny < this.rows) {
+            if (this.state[nx + ny * cols] === LIQUID) {
+              hasWater = true;
+              wx = nx; wy = ny;
+              break;
+            }
+          }
+        }
+        if (hasWater) break;
+      }
+      
+      if (hasWater) {
+        this.clearCell(wx, wy); // Consume water
+        this.state[i] = PLANT; // Become Seed/Plant
+        this.r[i] = 30 + Math.floor(fastRandom() * 20);
+        this.g[i] = 120 + Math.floor(fastRandom() * 40);
+        this.b[i] = 30 + Math.floor(fastRandom() * 20);
+        this.mass[i] = 1.0;
+        this.vely[i] = 0;
+        this.velx[i] = 0;
+        return;
+      }
+    }
 
     if (complexSolid) {
       this.vely[i] = Math.min(this.vely[i] + 0.2, 8);
@@ -405,7 +465,7 @@ class Grid {
         pd[px]     = 15;
         pd[px + 1] = 23;
         pd[px + 2] = 42;
-        pd[px + 3] = 255;
+        pd[px + 3] = 0;
       }
     }
     return pd;
@@ -449,6 +509,20 @@ class Grid {
           }
           this.clearCell(x, y); // Fire dies unconditionally
           return;
+        } else if (ns === PLANT || ns === WOOD || ns === LEAF || ns === GRASS || ns === OIL) {
+          // Combustion
+          if (fastRandom() < (ns === OIL ? 0.3 : 0.05)) {
+            this.state[ni] = FIRE;
+            this.r[ni] = 255;
+            this.g[ni] = 120 + Math.floor(fastRandom() * 100);
+            this.b[ni] = 30 + Math.floor(fastRandom() * 50);
+            this.life[ni] = 30 + Math.floor(fastRandom() * 30);
+            this.heat[ni] = 0;
+            this.mass[ni] = 0;
+            this.vely[ni] = -1;
+            this.velx[ni] = (fastRandom() - 0.5);
+            this.updated[ni] = 1;
+          }
         } else if (ns === SOLID) {
           // Fire + Sand → heat up, eventually become Glass
           this.heat[ni] += 1.0 * heatPower;
@@ -605,6 +679,132 @@ class Grid {
     }
 
     // Very limited horizontal spread (spread=1)
+    const canLeft = this.isEmpty(x - 1, y);
+    const canRight = this.isEmpty(x + 1, y);
+    if (canLeft && canRight) {
+      fastRandom() > 0.5 ? this.movePixel(x, y, x - 1, y) : this.movePixel(x, y, x + 1, y);
+    } else if (canLeft) {
+      this.movePixel(x, y, x - 1, y);
+    } else if (canRight) {
+      this.movePixel(x, y, x + 1, y);
+    }
+  }
+
+  // ════════════════════════════════════════
+  //  Organic Flora System
+  // ════════════════════════════════════════
+  updatePlant(x, y) {
+    const i = x + y * this.cols;
+
+    if (fastRandom() < 0.01 && this.checkPressure(x, y) > 15) {
+      this.turnToOil(x, y);
+      return;
+    }
+
+    if (this.isEmpty(x, y - 1) && fastRandom() < 0.002) { // Extremely slow start
+      const growthEnergy = 8 + Math.floor(fastRandom() * 8);
+      this.setPixel(x, y - 1, WOOD, 100 + Math.floor(fastRandom()*20), 70 + Math.floor(fastRandom()*20), 40 + Math.floor(fastRandom()*10), 1.0, 0, 0);
+      this.life[x + (y - 1) * this.cols] = growthEnergy;
+    }
+
+    this.trySpreadGrass(x, y);
+  }
+
+  updateWood(x, y) {
+    const i = x + y * this.cols;
+
+    if (fastRandom() < 0.01 && this.checkPressure(x, y) > 15) {
+      this.turnToOil(x, y);
+      return;
+    }
+
+    const energy = this.life[i];
+    if (energy > 0 && fastRandom() < 0.01) { // Slower stalk/branch growth
+      if (this.isEmpty(x, y - 1)) {
+        this.setPixel(x, y - 1, WOOD, 100 + Math.floor(fastRandom()*20), 70 + Math.floor(fastRandom()*20), 40 + Math.floor(fastRandom()*10), 1.0, 0, 0);
+        this.life[x + (y - 1) * this.cols] = energy - 1;
+        this.life[i] = 0;
+      }
+      
+      // Spawn leaves mostly at higher branches/tips
+      if (energy <= 5) {
+        const side = fastRandom() > 0.5 ? 1 : -1;
+        if (this.isEmpty(x + side, y)) {
+           this.setPixel(x + side, y, LEAF, 60 + Math.floor(fastRandom()*30), 180 + Math.floor(fastRandom()*40), 60 + Math.floor(fastRandom()*30), 0.5, 0, 0);
+        }
+      }
+    }
+  }
+
+  updateLeaf(x, y) {
+    if (fastRandom() < 0.01 && this.checkPressure(x, y) > 15) {
+      this.turnToOil(x, y);
+      return;
+    }
+    
+    // Fall if nothing below (drifts down)
+    if (fastRandom() < 0.1) {
+      if (this.isEmpty(x, y + 1)) {
+        this.movePixel(x, y, x, y + 1);
+      } else if (this.isEmpty(x - 1, y + 1)) {
+        this.movePixel(x, y, x - 1, y + 1);
+      } else if (this.isEmpty(x + 1, y + 1)) {
+        this.movePixel(x, y, x + 1, y + 1);
+      }
+    }
+  }
+
+  updateGrass(x, y) {
+    if (fastRandom() < 0.01 && this.checkPressure(x, y) > 15) {
+      this.turnToOil(x, y);
+      return;
+    }
+
+    this.trySpreadGrass(x, y);
+
+    if (fastRandom() < 0.0005 && this.isEmpty(x, y - 1)) {
+        this.setPixel(x, y - 1, PLANT, 30 + Math.floor(fastRandom() * 20), 120 + Math.floor(fastRandom() * 40), 30 + Math.floor(fastRandom() * 20), 1.0, 0, 0);
+    }
+  }
+
+  trySpreadGrass(x, y) {
+    if (fastRandom() < 0.02) {
+      const side = fastRandom() > 0.5 ? 1 : -1;
+      const nx = x + side;
+      if (nx >= 0 && nx < this.cols) {
+         if (this.isEmpty(nx, y) && this.isState(nx, y + 1, SOLID)) {
+            this.setPixel(nx, y, GRASS, 50 + Math.floor(fastRandom()*30), 200 + Math.floor(fastRandom()*55), 50 + Math.floor(fastRandom()*30), 1.0, 0, 0);
+         } else if (this.isEmpty(nx, y + 1) && this.isState(nx, y + 2, SOLID)) {
+            this.setPixel(nx, y + 1, GRASS, 50 + Math.floor(fastRandom()*30), 200 + Math.floor(fastRandom()*55), 50 + Math.floor(fastRandom()*30), 1.0, 0, 0);
+         }
+      }
+    }
+  }
+
+  turnToOil(x, y) {
+    this.setPixel(x, y, OIL, 20 + Math.floor(fastRandom()*10), 10 + Math.floor(fastRandom()*10), 30 + Math.floor(fastRandom()*20), 1.5, 1.0, 0);
+  }
+
+  // ════════════════════════════════════════
+  //  Geological System
+  // ════════════════════════════════════════
+  updateOil(x, y) {
+    if (fastRandom() < 0.01 && this.checkPressure(x, y) > 30) {
+      this.setPixel(x, y, DIAMOND, 200 + Math.floor(fastRandom()*55), 230 + Math.floor(fastRandom()*25), 255, 3.0, 0, 0);
+      return;
+    }
+
+    if (fastRandom() > 0.7) return;
+
+    if (this.isEmpty(x, y + 1)) {
+      this.movePixel(x, y, x, y + 1);
+      return;
+    }
+    if (this.isState(x, y + 1, LIQUID)) {
+      this.swapPixel(x, y, x, y + 1);
+      return;
+    }
+
     const canLeft = this.isEmpty(x - 1, y);
     const canRight = this.isEmpty(x + 1, y);
     if (canLeft && canRight) {

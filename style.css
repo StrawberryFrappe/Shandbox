@@ -277,12 +277,13 @@
   /* Individual positions */
   #solid-toggle  { top: 50px; }
   #render-toggle { top: 80px; }
+  #camera-toggle { top: 110px; }
 
   /* ── Gesture Legend ── */
   #gesture-legend {
     position: absolute;
     right: 20px;
-    top: 120px;
+    top: 150px;
     z-index: 100;
     color: #cbd5e1;
     background: rgba(30, 41, 59, 0.6);

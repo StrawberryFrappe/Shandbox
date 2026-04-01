@@ -5,6 +5,7 @@ let complexSolid = true;
 // ── Renderers ──
 let softRenderer, glRenderer;
 let useWebGL = true;
+let useCameraMirror = false;
 
 // ── ml5 Hand Tracking ──
 let handPose;
@@ -30,7 +31,7 @@ let eraserActive = false;
 
 function preload() {
   console.log("Loading Handpose...");
-  handPose = ml5.handPose({ flipped: true, maxHands: 1 });
+  handPose = ml5.handPose({ flipped: false, maxHands: 1 });
 }
 
 function setup() {
@@ -61,6 +62,7 @@ function onFirstDetection(results) {
   document.getElementById('loading').classList.add('hidden');
   document.getElementById('solid-toggle').classList.remove('hidden');
   document.getElementById('render-toggle').classList.remove('hidden');
+  document.getElementById('camera-toggle').classList.remove('hidden');
   document.getElementById('gesture-legend').classList.remove('hidden');
 
   let solidCb = document.getElementById('complex-solid-checkbox');
@@ -73,6 +75,12 @@ function onFirstDetection(results) {
   webglCb.checked = true;
   document.getElementById('webgl-checkbox').addEventListener('change', (e) => {
     useWebGL = e.target.checked;
+  });
+
+  let cameraCb = document.getElementById('camera-checkbox');
+  cameraCb.checked = false;
+  document.getElementById('camera-checkbox').addEventListener('change', (e) => {
+    useCameraMirror = e.target.checked;
   });
 
   modelsLoaded = true;
@@ -130,6 +138,13 @@ function draw() {
   background(15, 23, 42);
 
   if (!gameStarted) return;
+
+  if (useCameraMirror && video) {
+    push();
+    tint(255, 60); // Low opacity to help with visual cues without distraction
+    image(video, 0, 0, width, height);
+    pop();
+  }
 
   // ── Throttled hand detection (every 2nd frame) ──
   if (frameCount % detectionFrameSkip === 0 && !detectionPending && modelsLoaded) {
@@ -266,11 +281,11 @@ function processHands() {
   if (eraserActive) {
     let midX = (kp[8].x + kp[12].x) / 2;
     let midY = (kp[8].y + kp[12].y) / 2;
-    
+
     let gx = pX(midX);
     let gy = pY(midY);
     let eraserRadius = 4; // larger brush
-    
+
     for (let dy = -eraserRadius; dy <= eraserRadius; dy++) {
       for (let dx = -eraserRadius; dx <= eraserRadius; dx++) {
         if (dx * dx + dy * dy <= eraserRadius * eraserRadius) {
@@ -464,12 +479,12 @@ function drawHandVisuals() {
     circle(kp[4].x, kp[4].y, 18);
     circle(kp[20].x, kp[20].y, 18);
   }
-  
+
   if (eraserActive) {
     // ── Eraser indicator ──
     let emitX = (kp[8].x + kp[12].x) / 2;
     let emitY = (kp[8].y + kp[12].y) / 2;
-    
+
     noFill();
     stroke(255, 100, 100, 150);
     strokeWeight(2);
